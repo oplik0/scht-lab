@@ -1,5 +1,6 @@
 from typer import Typer, Option, Context
 from typing import Annotated
+from scht_lab.flows import flows_app
 app = Typer()
 
 @app.callback()
@@ -12,3 +13,6 @@ def all_commands(
     ctx.obj["BASE_URL"] = host
     ctx.obj["USERNAME"] = user
     ctx.obj["PASSWORD"] = password
+
+
+app.add_typer(flows_app, name="flows", callback=all_commands)
