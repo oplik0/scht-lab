@@ -1,10 +1,12 @@
 """Graph utilities for Topology objects."""
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NewType
 
 import rustworkx as rx
 
 from scht_lab.topo import Link, Location, Topology
+from scht_lab.models.flow import Flow
+from itertools import pairwise
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -14,7 +16,7 @@ def build_graph(topo: Topology):
     graph = rx.PyGraph()
     graph_map = {topo.locations[i]: i for i in graph.add_nodes_from(topo.locations)}
     for link in topo.links:
-        graph.add_edge(graph_map[link.src], graph_map[link.dst], link)
+        graph.add_edge(graph_map[link.locations[0]], graph_map[link.locations[1]], link)
     return graph, graph_map
 
 
@@ -27,7 +29,11 @@ class CostTypes(Enum):
     combined = 4
 
 
-def get_paths(graph: rx.PyGraph, graph_map: dict[Location, int], cost_type: CostTypes):
+NodePaths = NewType("NodePaths", dict[Location, dict[Location, list[Location]]])
+
+def get_paths(
+        graph: rx.PyGraph, graph_map: dict[Location, int], 
+        cost_type: CostTypes) -> NodePaths:
     """Find all shortest paths between all nodes in a graph."""
     cost_fn: Callable[[Link], float] = lambda x: 0.0
     match cost_type:
@@ -46,9 +52,48 @@ def get_paths(graph: rx.PyGraph, graph_map: dict[Location, int], cost_type: Cost
                                     edge.loss_calc() * 5)
     inverse_graph_map = {v: k for k, v in graph_map.items()}
     paths: dict[int, dict[int, list[int]]] = rx.all_pairs_dijkstra_shortest_paths(graph, cost_fn) # type: ignore
-    node_paths: dict[Location, dict[Location, list[Location]]] = {}
+    node_paths: NodePaths = {} # type: ignore
     for node, targets in paths.items():
         node_paths.setdefault(inverse_graph_map[node], {})
         for target, path in targets.items():
             node_paths[inverse_graph_map[node]][inverse_graph_map[target]] = [inverse_graph_map[i] for i in path]
     return node_paths
+
+
+def paths_to_flows(paths: NodePaths, topo: Topology) -> list[Flow]:
+    """Convert a NodePaths object to a list of unique flows."""
+    flows: list[Flow] = []
+    for src, targets in paths.items():
+        for dst, path in targets.items():
+            for current, nexthop in pairwise(path):
+                flows.append({
+                    "deviceId": current.ofname,
+                    "isPermanent": True,
+                    "priority": 40000,
+                    "timeout": 0,
+                    "selector": {
+                        "criteria": [
+                            {
+                                "type": "ETH_TYPE",
+                                "ethType": "0x800"
+                            },
+                            {
+                                "type": "IPV4_DST",
+                                "ip": dst.ip
+                            }, 
+                            {
+                                "type": "IPV4_SRC",
+                                "ip": src.ip
+                            }
+                        ]
+                    },
+                    "treatment": {
+                        "instructions": [
+                            {
+                                "type": "OUTPUT",
+                                "port": str(topo.port_to(current, nexthop))
+                            }
+                        ]
+                    }
+                })
+    return flows

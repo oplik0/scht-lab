@@ -15,7 +15,7 @@ from typer import get_app_dir
 
 class Location:
     """Location (switch/city) in the topology."""
-    def __init__(self, name: str, ip: str, index: int, population: int, lat, lon, link_count: int) -> None:
+    def __init__(self, name: str, ip: str, index: int, population: int, lat, lon, link_count: int = 1) -> None:
         """Initialize a location object."""
         self.name = name
         self.index = index
@@ -29,11 +29,11 @@ class Location:
 
 class Link:
     """Link between two locations (switches)."""
-    def __init__(self, src: Location, dst: Location, distance: int) -> None:
+    def __init__(self, locations: tuple[Location, Location], distance: int, ports: tuple[int, int]) -> None:
         """Initialize a link object."""
-        self.src = src
-        self.dst = dst
+        self.locations = locations
         self.distance = distance
+        self.ports = ports
     def delay_calc(self) -> float:
         """Calculate delay for a link."""
         return self.distance/200
@@ -45,21 +45,23 @@ class Link:
     def bandwidth_calc(self) -> float:
         """Calculate bandwidth for a link."""
         return (
-                (self.src.population + 
-                self.dst.population + 
-                10*max(self.src.population, self.dst.population)) / 9000000 - 
+                (self.locations[0].population + 
+                self.locations[1].population + 
+                10*max(self.locations[0].population, self.locations[1].population)) / 9000000 - 
                 self.distance / 3 + 
-                (self.src.link_count + self.dst.link_count) * 90
+                (self.locations[0].link_count + self.locations[1].link_count) * 90
                 )
 
     def loss_calc(self) -> float:
         """Calculate loss for a link."""
         return (
-                (self.src.population + self.dst.population + 
-                 max(self.src.population, self.dst.population)) / 2000000000 + 
+                (self.locations[0].population + self.locations[1].population + 
+                 max(self.locations[0].population, self.locations[1].population)) / 2000000000 + 
                 self.distance / 1500000
                 )
-
+    def port_to(self, location: Location) -> int:
+        """Get the port number to a location."""
+        return self.ports[1-self.locations.index(location)]
 
 
 class Topology:
@@ -79,7 +81,10 @@ class Topology:
         return next((location for location in self.locations if location.name == name), None)
     def has_link(self, l1: Location, l2: Location):
         """Check if a link exists between two locations (undirected)."""
-        return any(l1 in (link.src, link.dst) and l2 in (link.src, link.dst) for link in self.links)
+        return any(l1 in link.locations and l2 in link.locations for link in self.links)
+    def port_to(self, src: Location, dst: Location):
+        """Get the port number to a location."""
+        return next(link.port_to(dst) for link in self.links if src in link.locations and dst in link.locations)
 
 @alru_cache(maxsize=64)
 async def get_geo(name: str) -> GeoLocation | None:
@@ -104,7 +109,6 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
             population=cast(int, topo_data[city]["population"]),
             lat=location.latitude if location else 0,
             lon=location.longitude if location else 0,
-            link_count=len(cast(OrderedDict, topo_data[city]["neighbors"])),
         ))
 
     
@@ -114,12 +118,13 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
             neighbor_location = topo.get_location(neighbor)
             if city_location is None or neighbor_location is None or topo.has_link(city_location, neighbor_location):
                 continue
-            
+            city_location.link_count += 1
+            neighbor_location.link_count += 1
             topo.add_link(
                 Link(
-                    city_location,
-                    neighbor_location,
+                    (city_location, neighbor_location,),
                     cast(int, cast(OrderedDict, topo_data[city]["neighbors"])[neighbor]),
+                    ports=(city_location.link_count, neighbor_location.link_count,)
                 ),
             )
     return topo
