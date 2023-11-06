@@ -3,7 +3,7 @@ import json
 from collections import OrderedDict
 from math import log, sqrt
 from pathlib import Path
-from typing import cast
+from typing import Optional, cast
 
 from anyio import open_file
 from async_lru import alru_cache
@@ -25,12 +25,15 @@ class Location:
         self.lat = lat
         self.lon = lon
         self.link_count = link_count
-
+    @property
+    def coords(self) -> tuple[float, float]:
+        """Get coordinates of a location."""
+        return (self.lat, self.lon)
 
 
 class Link:
     """Link between two locations (switches)."""
-    def __init__(self, locations: tuple[Location, Location], distance: int, ports: tuple[int, int]) -> None:
+    def __init__(self, locations: tuple[Location, Location], distance: int, ports: Optional[tuple[int, int]] = None) -> None:
         """Initialize a link object."""
         self.locations = locations
         self.distance = distance
