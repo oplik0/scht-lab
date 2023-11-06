@@ -9,7 +9,7 @@ from rich.tree import Tree
 flows_app = Typer(name="flows", help="Interact with flows")
 
 @flows_app.command("list")
-async def test_flow(ctx: Context):
+async def get_flows(ctx: Context):
     async with get_client(ctx) as client:
         response = await client.get("/onos/v1/flows")
         data = await response.json()
@@ -28,3 +28,43 @@ async def test_flow(ctx: Context):
                 secondary_key = (set(rule.keys()) - set(["type"])).pop()
                 criteria.add(f'{rule["type"]}: {secondary_key}={rule[secondary_key]}', style="green")
         print(flows_tree)
+
+@flows_app.command("add")
+async def add_flow(ctx: Context, device_id: str, in_port: int, out_port: int, ip: str):
+    async with get_client(ctx) as client:
+        flow: Flow = {
+            "deviceId": device_id,
+            "priority": 40000,
+            "timeout": 0,
+            "isPermanent": True,
+            "treatment": {
+                "instructions": [
+                    {
+                        "type": "OUTPUT",
+                        "port": str(out_port)
+                    }
+                ]
+            },
+            "selector": {
+                "criteria": [
+                    {
+                        "type": "IN_PORT",
+                        "port": str(in_port)
+                    },
+                    {
+                        "type": "ETH_TYPE",
+                        "ethType": "0x800"
+                    },
+                    {
+                        "type": "IPV4_DST",
+                        "ip": ip
+                    }
+                ]
+            }
+        }
+        response = await client.post(f"/onos/v1/flows?appId=scht_lab", json={"flows":[flow]})
+        try:
+            data = await response.json()
+            print(data)
+        except:
+            print(response.status)

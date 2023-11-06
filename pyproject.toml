@@ -10,6 +10,8 @@ packages = [{include = "scht_lab"}]
 python = "^3.10"
 aiohttp = "^3.8.6"
 typer = {extras = ["all"], git = "https://github.com/oplik0/typer.git", branch = "async_command"}
+rustworkx = "^0.13.2"
+geopy = "^2.4.0"
 
 [build-system]
 requires = ["poetry-core"]

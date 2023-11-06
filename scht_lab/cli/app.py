@@ -1,6 +1,6 @@
 from typer import Typer, Option, Context
 from typing import Annotated
-from scht_lab.flows import flows_app
+from scht_lab.cli.flows import flows_app
 app = Typer()
 
 @app.callback()
