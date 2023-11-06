@@ -1,4 +1,7 @@
-from typing import TypedDict, Optional, Literal, Union, final
+"""Model of a single ONOS flow."""
+# ruff: noqa: D101
+
+from typing import Literal, TypedDict, Union, final
 
 @final
 class OutputInstruction(TypedDict):
@@ -25,7 +28,7 @@ class QueueInstruction(TypedDict):
 
 @final
 class L0ModificationLambdaInstruction(TypedDict("L0ModificationLambdaInstruction", {
-    "lambda": int
+    "lambda": int,
 })):
     type: Literal["L0MODIFICATION"]
     subtype: Literal["LAMBDA"]
@@ -162,7 +165,7 @@ Instruction = Union[
     L3ModificationIPV6DSTInstruction, 
     L3ModificationIPV6FLABELInstruction, 
     L4ModificationTCPSRCInstruction, 
-    L4ModificationUDPSRCInstruction
+    L4ModificationUDPSRCInstruction,
 ]
 
 @final
@@ -331,9 +334,9 @@ class Ipv6ExthdrCriteria(TypedDict):
     exthdrFlags: int
 
 @final
-class OchSigIdCriteria(TypedDict("OchSigIdCriteria", {"lambda": Optional[int]})):
+class OchSigIdCriteria(TypedDict("OchSigIdCriteria", {"lambda": int | None})):
     type: Literal["OCH_SIGID"]
-    ochSignalId: Optional[int]
+    ochSignalId: int | None
 
 
 @final
@@ -425,7 +428,7 @@ Criteria = Union[
     SlotGranularityCriteria, 
     TunnelIdCriteria, 
     OduSigIdCriteria, 
-    OduSigTypeCriteria
+    OduSigTypeCriteria,
 ]
 
 class Selector(TypedDict):

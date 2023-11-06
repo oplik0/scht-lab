@@ -1,20 +1,22 @@
+"""Topology of the network and related utilities."""
 import json
 from collections import OrderedDict
 from math import log, sqrt
 from pathlib import Path
-from typing import Optional, Union, cast
-from geopy.geocoders import Nominatim
-from geopy.location import Location as GeoLocation
-from geopy.adapters import AioHTTPAdapter
-from async_lru import alru_cache
-from typer import get_app_dir
+from typing import cast
 
 from anyio import open_file
-from contextlib import asynccontextmanager
-    
+from async_lru import alru_cache
+from geopy.adapters import AioHTTPAdapter
+from geopy.geocoders import Nominatim
+from geopy.location import Location as GeoLocation
+from typer import get_app_dir
 
-class Location():
+
+class Location:
+    """Location (switch/city) in the topology."""
     def __init__(self, name: str, ip: str, index: int, population: int, lat, lon, link_count: int) -> None:
+        """Initialize a location object."""
         self.name = name
         self.index = index
         self.ip = ip
@@ -25,49 +27,71 @@ class Location():
         self.link_count = link_count
 
 
-class Link():
+class Link:
+    """Link between two locations (switches)."""
     def __init__(self, src: Location, dst: Location, distance: int) -> None:
+        """Initialize a link object."""
         self.src = src
         self.dst = dst
         self.distance = distance
     def delay_calc(self) -> float:
+        """Calculate delay for a link."""
         return self.distance/200
 
     def jitter_calc(self) -> float:
+        """Calculate jitter (derivative of delay) for a link."""
         return log(sqrt(self.distance/200))
 
     def bandwidth_calc(self) -> float:
-        return (self.src.population + self.dst.population + 10*max(self.src.population, self.dst.population)) / 9000000 - self.distance / 3 + (self.src.link_count + self.dst.link_count) * 90
+        """Calculate bandwidth for a link."""
+        return (
+                (self.src.population + 
+                self.dst.population + 
+                10*max(self.src.population, self.dst.population)) / 9000000 - 
+                self.distance / 3 + 
+                (self.src.link_count + self.dst.link_count) * 90
+                )
 
     def loss_calc(self) -> float:
-        return (self.src.population + self.dst.population + max(self.src.population, self.dst.population)) / 2000000000 + self.distance / 1500000
+        """Calculate loss for a link."""
+        return (
+                (self.src.population + self.dst.population + 
+                 max(self.src.population, self.dst.population)) / 2000000000 + 
+                self.distance / 1500000
+                )
 
 
 
-class Topology():
-    def __init__(self, locations: Optional[list[Location]] = None, links: Optional[list[Link]] = None) -> None:
+class Topology:
+    """Topology of the network."""
+    def __init__(self, locations: list[Location] | None = None, links: list[Link] | None = None) -> None:
+        """Initialize the topology."""
         self.locations: list[Location] = locations or []
         self.links: list[Link] = links or []
     def add_location(self, location: Location) -> None:
+        """Add a new location to the topology."""
         self.locations.append(location)
     def add_link(self, link: Link) -> None:
+        """Add a new link between locations to the topology."""
         self.links.append(link)
-    def get_location(self, name: str) -> Optional[Location]:
+    def get_location(self, name: str) -> Location | None:
+        """Get a location from the topology by name."""
         return next((location for location in self.locations if location.name == name), None)
     def has_link(self, l1: Location, l2: Location):
+        """Check if a link exists between two locations (undirected)."""
         return any(l1 in (link.src, link.dst) and l2 in (link.src, link.dst) for link in self.links)
 
 @alru_cache(maxsize=64)
 async def get_geo(name: str) -> GeoLocation | None:
+    """Get geolocation by name of a place (e.g. city)."""
     async with Nominatim(user_agent="scht_lab_pw", adapter_factory=AioHTTPAdapter) as geolocator:
         coro = geolocator.geocode(name, exactly_one=True)
-        assert coro is not None
+        if coro is None:
+            return None
         return cast(GeoLocation, await coro)
 
 async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | OrderedDict[str, int]]]) -> Topology:
-    """
-    Load topology from a OrderedDict and return a graph object.
-    """
+    """Load topology from a OrderedDict."""
     topo = Topology()
     topo_index = lambda x: list(topo_data.keys()).index(x)
     for city in topo_data.keys():
@@ -80,7 +104,7 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
             population=cast(int, topo_data[city]["population"]),
             lat=location.latitude if location else 0,
             lon=location.longitude if location else 0,
-            link_count=len(cast(OrderedDict, topo_data[city]["neighbors"]))
+            link_count=len(cast(OrderedDict, topo_data[city]["neighbors"])),
         ))
 
     
@@ -95,18 +119,20 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
                 Link(
                     city_location,
                     neighbor_location,
-                    cast(int, cast(OrderedDict, topo_data[city]["neighbors"])[neighbor])
-                )
+                    cast(int, cast(OrderedDict, topo_data[city]["neighbors"])[neighbor]),
+                ),
             )
     return topo
 
 async def load_topology_from_file(filename: str | Path) -> Topology:
+    """Load topology from a file."""
     async with await open_file(filename, "r") as f:
         data = await f.read()
         return await load_topology(json.loads(data, object_pairs_hook=OrderedDict))
 
 
 async def default_topo() -> Topology:
+    """Load the default topology (from app directory)."""
     path = Path(get_app_dir("scht_lab")) / "topo.json"
     topo = await load_topology_from_file(path)
     return topo
