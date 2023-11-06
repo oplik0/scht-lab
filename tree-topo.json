@@ -1,0 +1,70 @@
+{
+    "Berlin": {
+        "population": 3755251,
+        "neighbors": {
+            "Frankfurt": 594,
+            "Warsaw": 729,
+            "Hamburg": 357,
+            "Prague": 394
+        }
+    },
+    "Barcelona": {
+        "population": 1620343,
+        "neighbors": {
+            "Paris": 1173
+        }
+    },
+    "Paris": {
+        "population": 2102650,
+        "neighbors": {
+            "Barcelona": 1173,
+            "Dunkirk": 342,
+            "Geneva": 578,
+            "Frankfurt": 670
+        }
+    },
+    "Frankfurt": {
+        "population": 773068,
+        "neighbors": {
+            "Paris": 670,
+            "Vienna": 844,
+            "Berlin": 594
+        }
+    },
+    "Vienna": {
+        "population": 1970000,
+        "neighbors": {
+            "Frankfurt": 844
+        }
+    },
+    "Dunkirk": {
+        "population": 86550,
+        "neighbors": {
+            "Paris": 342
+        }
+    },
+    "Geneva": {
+        "population": 201818,
+        "neighbors": {
+            "Paris": 578
+        }
+    },
+    "Hamburg": {
+        "population": 1841179,
+        "neighbors": {
+            "Berlin": 357
+        }
+    },
+    "Warsaw": {
+        "population": 1760658,
+        "neighbors": {
+            "Berlin": 729
+        }
+    },
+    "Prague": {
+        "population": 1301132,
+        "neighbors": {
+            "Berlin": 394
+        }
+    }
+}
