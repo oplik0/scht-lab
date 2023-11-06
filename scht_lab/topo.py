@@ -27,6 +27,7 @@ class Location:
         self.link_count = link_count
 
 
+
 class Link:
     """Link between two locations (switches)."""
     def __init__(self, locations: tuple[Location, Location], distance: int, ports: tuple[int, int]) -> None:
