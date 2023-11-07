@@ -30,6 +30,7 @@ class Location:
         """Get coordinates of a location."""
         return (self.lat, self.lon)
 
+
 class Link:
     """Link between two locations (switches)."""
     def __init__(self, locations: tuple[Location, Location], distance: int, ports: Optional[tuple[int, int]] = None) -> None:
