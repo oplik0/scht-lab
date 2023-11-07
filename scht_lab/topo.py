@@ -64,6 +64,8 @@ class Link:
                 )
     def port_to(self, location: Location) -> int:
         """Get the port number to a location."""
+        if not self.ports:
+            raise ValueError("Ports not defined for link")
         return self.ports[1-self.locations.index(location)]
 
 

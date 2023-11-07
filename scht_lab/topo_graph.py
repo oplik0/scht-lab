@@ -59,7 +59,7 @@ def get_path(
         src: Location, dst: Location) -> list[Location]:
     """Find a shortest path between two nodes in a graph."""
     inverse_graph_map = {v: k for k, v in graph_map.items()}
-    path = rx.astar_shortest_path(graph, inverse_graph_map[src], lambda node: node.ip == dst.ip, get_cost_calc(priorities), ) # type: ignore
+    path = rx.astar_shortest_path(graph, inverse_graph_map[src], lambda node: node.ip == dst.ip, get_cost_calc(priorities), )
 
 
 def paths_to_flows(paths: NodePaths, topo: Topology) -> list[Flow]:
