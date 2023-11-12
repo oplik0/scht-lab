@@ -14,6 +14,7 @@ rustworkx = "^0.13.2"
 geopy = "^2.4.0"
 async-lru = "^2.0.4"
 anyio = "^4.0.0"
+pydantic = "^2.4.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -22,7 +23,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 select = ["D", "E", "F", "I", "UP", "S", "B", "A", "COM", "ICN", "PL", "RUF", "YTT", "BLE", "C4", "DTZ", "EM", "EXE", "ISC", "RSE", "TCH", "PTH", "TRY", "NPY"]
-ignore = ["W191", "D206", "D211", "D213", "PLR0913", "E731", "A003", "UP007"]
+ignore = ["W191", "D206", "D211", "D213", "PLR0913", "E731", "A003", "UP007", "TCH002", "TCH003", "TCH001"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]

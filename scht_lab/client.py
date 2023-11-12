@@ -1,6 +1,6 @@
 """aiohttp client wrapper for ONOS API calls."""
 from aiohttp import BasicAuth, ClientSession
-from typer import Context
+from click import Context
 
 
 def get_client(context: Context, *args, **kwargs):

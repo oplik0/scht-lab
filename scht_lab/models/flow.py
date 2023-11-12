@@ -3,6 +3,9 @@
 
 from typing import Literal, TypedDict, Union, final
 
+from pydantic import BaseModel
+
+
 @final
 class OutputInstruction(TypedDict):
     type: Literal["OUTPUT"]
@@ -434,7 +437,7 @@ Criteria = Union[
 class Selector(TypedDict):
     criteria: list[Criteria]
 
-class Flow(TypedDict):
+class Flow(BaseModel):
     deviceId: str
     priority: int
     timeout: int

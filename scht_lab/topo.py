@@ -4,6 +4,7 @@ from collections import OrderedDict
 from math import log, sqrt
 from pathlib import Path
 from typing import Optional, cast
+from functools import cache
 
 from anyio import open_file
 from async_lru import alru_cache
@@ -33,19 +34,26 @@ class Location:
 
 class Link:
     """Link between two locations (switches)."""
-    def __init__(self, locations: tuple[Location, Location], distance: int, ports: Optional[tuple[int, int]] = None) -> None:
+    def __init__(
+            self, 
+            locations: tuple[Location, Location], 
+            distance: int, ports: Optional[tuple[int, int]] = None, 
+            utilization: float = 0,
+            ) -> None:
         """Initialize a link object."""
         self.locations = locations
         self.distance = distance
         self.ports = ports
+        self.utilization = utilization
+    @cache
     def delay_calc(self) -> float:
         """Calculate delay for a link."""
         return self.distance/200
-
+    @cache
     def jitter_calc(self) -> float:
         """Calculate jitter (derivative of delay) for a link."""
         return log(sqrt(self.distance/200))
-
+    @cache
     def bandwidth_calc(self) -> float:
         """Calculate bandwidth for a link."""
         return (
@@ -55,7 +63,7 @@ class Link:
                 self.distance / 3 + 
                 (self.locations[0].link_count + self.locations[1].link_count) * 90
                 )
-
+    @cache
     def loss_calc(self) -> float:
         """Calculate loss for a link."""
         return (
@@ -63,11 +71,17 @@ class Link:
                  max(self.locations[0].population, self.locations[1].population)) / 2000000000 + 
                 self.distance / 1500000
                 )
+    @cache
     def port_to(self, location: Location) -> int:
         """Get the port number to a location."""
         if not self.ports:
-            raise ValueError("Ports not defined for link")
+            msg = "Ports not defined for link"
+            raise ValueError(msg)
         return self.ports[1-self.locations.index(location)]
+    
+    def increase_utilization(self, amount: float) -> None:
+        """Increase the utilization of a link."""
+        self.utilization = min(self.bandwidth_calc(), self.utilization + amount)
 
 
 class Topology:
@@ -85,6 +99,9 @@ class Topology:
     def get_location(self, name: str) -> Location | None:
         """Get a location from the topology by name."""
         return next((location for location in self.locations if location.name == name), None)
+    def get_link(self, l1: Location, l2: Location) -> Link | None:
+        """Get a link between two locations (undirected)."""
+        return next((link for link in self.links if l1 in link.locations and l2 in link.locations), None)
     def has_link(self, l1: Location, l2: Location):
         """Check if a link exists between two locations (undirected)."""
         return any(l1 in link.locations and l2 in link.locations for link in self.links)
@@ -128,9 +145,9 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
             neighbor_location.link_count += 1
             topo.add_link(
                 Link(
-                    (city_location, neighbor_location,),
+                    (city_location, neighbor_location),
                     cast(int, cast(OrderedDict, topo_data[city]["neighbors"])[neighbor]),
-                    ports=(city_location.link_count, neighbor_location.link_count,)
+                    ports=(city_location.link_count, neighbor_location.link_count),
                 ),
             )
     return topo

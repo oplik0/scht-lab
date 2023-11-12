@@ -1,9 +1,12 @@
 """Typer-based CLI application."""
 from typing import Annotated
 
-from typer import Context, Option, Typer
+from click import Context
+from typer import Option, Typer
 
 from scht_lab.cli.flows import flows_app
+from scht_lab.cli.streams import streams_app
+from scht_lab.cli.paths import paths_app
 
 app = Typer()
 
@@ -21,3 +24,5 @@ def all_commands(
 
 
 app.add_typer(flows_app, name="flows", callback=all_commands)
+app.add_typer(streams_app, name="streams", callback=all_commands)
+app.add_typer(paths_app, name="paths", callback=all_commands)
