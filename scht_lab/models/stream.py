@@ -9,42 +9,22 @@ class StreamType(Enum):
     """Enum for variants of cost estimation for links."""
     UDP = "UDP"
     TCP = "TCP"
-    QUIC = "QUIC"
 
 
 class Requirements(BaseModel):
     """Requirements for a stream."""
-    delay: Optional[float]
-    jitter: Optional[float]
-    bandwidth: Optional[float]
-    loss: Optional[float]
-    @staticmethod
-    def default() -> "Requirements":
-        """Get default requirements."""
-        return Requirements(
-                delay=None,
-                jitter=None,
-                bandwidth=None,
-                loss=None,
-                )
+    delay: Optional[float] = None
+    jitter: Optional[float] = None
+    bandwidth: Optional[float] = None
+    loss: Optional[float] = None
 
 class Priorities(BaseModel):
     """Priorities for a stream."""
-    delay: Optional[float]
-    jitter: Optional[float]
-    bandwidth: Optional[float]
-    loss: Optional[float]
-    congestion: Optional[float]
-    @staticmethod
-    def default() -> "Priorities":
-        """Get default priorities."""
-        return Priorities(
-                delay=1.0,
-                jitter=1.0,
-                bandwidth=1.0,
-                loss=1.0,
-                congestion=1.0,
-                )
+    delay: Optional[float] = 1.0
+    jitter: Optional[float] = None
+    bandwidth: Optional[float] = 1.0
+    loss: Optional[float] = None
+    congestion: Optional[float] = None
 
 class Stream(BaseModel):
     """Definition of a stream for the app to handle."""

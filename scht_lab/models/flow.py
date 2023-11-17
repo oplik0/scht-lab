@@ -1,7 +1,7 @@
 """Model of a single ONOS flow."""
 # ruff: noqa: D101
 
-from typing import Literal, TypedDict, Union, final
+from typing_extensions import Literal, TypedDict, Union, final
 
 from pydantic import BaseModel
 
@@ -386,7 +386,7 @@ class OduSigTypeCriteria(TypedDict):
     oduSignalType: int
 
 
-class Treatment(TypedDict):
+class Treatment(BaseModel):
     instructions: list[Instruction]
 
 
@@ -434,7 +434,7 @@ Criteria = Union[
     OduSigTypeCriteria,
 ]
 
-class Selector(TypedDict):
+class Selector(BaseModel):
     criteria: list[Criteria]
 
 class Flow(BaseModel):
@@ -444,4 +444,13 @@ class Flow(BaseModel):
     isPermanent: bool
     treatment: Treatment
     selector: Selector
+    def __hash__(self) -> int:
+        return hash((
+            self.deviceId,
+            self.priority,
+            self.timeout,
+            self.isPermanent,
+            *[tuple(x) for x in [((k,v) for k,v in d.items()) for d in self.treatment.instructions]],
+            *[tuple(x) for x in [[(k,v) for k,v in d.items()] for d in self.selector.criteria]],
+        ))
 

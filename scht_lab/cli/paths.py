@@ -1,10 +1,11 @@
 from itertools import pairwise
 import json
 from pathlib import Path
-from typing import Annotated, Optional, Tuple, cast
+from typing import Annotated, Literal, Optional, Tuple, cast
 from operator import mul
 from functools import reduce
 from aiohttp import ClientError, ContentTypeError
+import re
 
 from pydantic import ValidationError
 from rich import print
@@ -18,6 +19,8 @@ from scht_lab.topo import Link, Location, Topology, load_topology_from_file, def
 from scht_lab.topo_graph import build_graph, get_path, paths_to_flows
 
 paths_app = Typer(name="paths")
+
+streams_regex = re.compile(r"^\s*{\s*\"streams\":\s*\[", re.UNICODE)
 
 @paths_app.command("find")
 async def find_paths_for_streams(
@@ -34,11 +37,12 @@ async def find_paths_for_streams(
     with target_file.open('r') as f:
         try:
             file_data = f.read()
-            if not file_data.strip().startswith("{"):
+            if not streams_regex.match(file_data):
                 file_data = jsonl_to_keyed(file_data, "streams")
             streams_data = Streams.model_validate_json(file_data)
         except ValidationError as e:
-            print(f"Error loading JSON file: {e}")
+            print(f"Error loading JSON file:")
+            print(e.errors())
             raise Exit(1)
     if topology:
         topo = await load_topology_from_file(topology)
@@ -52,24 +56,28 @@ async def find_paths_for_streams(
         if not source or not dest:
             print(f"Source or destination not found for stream {stream}")
             continue
-        priorities = stream.priorities or Priorities.default()
-        requirements = stream.requirements or Requirements.default()
+        priorities = stream.priorities or Priorities()
+        requirements = stream.requirements or Requirements()
         path = get_path(graph, graph_map, topo, source, dest, priorities, requirements)
-        link_path = cast(list[Link], map(lambda x: topo.get_link(*x), pairwise(path)))
+        link_path = cast(list[Link],list(map(lambda x: topo.get_link(*x), pairwise(path))))
         if not path or None in link_path:
             print(f"Correct path not found for stream {stream}")
             continue
         params = get_path_params(link_path, topo)
-        if requirements.delay and params[0] > requirements.delay:
-            print(f"Path {path} does not meet delay requirement of {requirements.delay} for stream {stream}")
+        if stream.type == "UDP" and params["bandwidth"] < stream.rate:
+            params["loss"] += (stream.rate - params["bandwidth"])/stream.rate
+        if requirements.delay and params["delay"] > requirements.delay:
+            print(f"Path {path} does not meet delay requirement of {requirements.delay} for stream {stream}. Total delay: {params['delay']}")
             continue
-        if requirements.jitter and params[1] > requirements.jitter:
-            print(f"Path {path} does not meet jitter requirement of {requirements.jitter} for stream {stream}")
+        if requirements.jitter and params["jitter"] > requirements.jitter:
+            print(f"Path {path} does not meet jitter requirement of {requirements.jitter} for stream {stream}. Total jitter: {params['jitter']}")
             continue
-        if requirements.loss and params[2] > requirements.loss:
-            print(f"Path {path} does not meet loss requirement of {requirements.loss} for stream {stream}")
+        if requirements.loss and params["loss"] > requirements.loss:
+            print(f"Path {path} does not meet loss requirement of {requirements.loss} for stream {stream}. Total loss: {params['loss']}")
             continue
         flows.update(paths_to_flows(path, topo))
+        flows.update(paths_to_flows(list(reversed(path)), topo))
+        flows.update(*[node.endpoint_flows() for node in path])
         for link in link_path:
             link.increase_utilization(stream.rate)
     if apply:
@@ -83,15 +91,24 @@ async def find_paths_for_streams(
     if output:
         with output.open('w') as f:
             json.dump({"flows": [flow.model_dump(exclude_unset=True, mode="json") for flow in flows]}, f, indent=2)
+    if not (apply or output):
+        print(flows)
     if not file:
         target_file.unlink()
-def get_path_params(path: list[Link], topo: Topology) -> Tuple[float, float, float]:
+def get_path_params(path: list[Link], topo: Topology) -> dict[Literal["delay", "jitter", "loss", "bandwidth"], float]:
     """Get the bandwidth of a path."""
     delays = []
     success_probabilities = []
     jitters = []
+    bandwidths = []
     for link in path:
         delays.append(link.delay_calc())
         success_probabilities.append(1-link.loss_calc())
         jitters.append(link.jitter_calc()) # not sure if the calculation for jitter is correct tbh
-    return sum(delays) if delays else 0.0, sum(jitters) if jitters else 0.0, 1-reduce(mul, success_probabilities) if success_probabilities else 1.0
+        bandwidths.append(link.bandwidth_calc())
+    return {
+        "delay": sum(delays) if delays else 0.0,
+        "jitter": sum(jitters) if jitters else 0.0,
+        "loss": 1-reduce(mul, success_probabilities) if success_probabilities else 1.0,
+        "bandwidth": min(bandwidths) if bandwidths else 0.0
+        }

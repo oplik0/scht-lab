@@ -58,6 +58,9 @@ def load_streams_from_cli(ctx: Context, streams: Annotated[list[str], Argument(h
 def list_streams(ctx: Context):
     """List all streams saved from the CLI."""
     path = Path(get_app_dir("scht_lab")) / "resources" / "streams.json"
+    if not path.exists():
+        print("No streams found")
+        return
     with path.open('r') as file:
         try:
             file_data = file.read()
@@ -66,3 +69,5 @@ def list_streams(ctx: Context):
             print(streams_data)
         except ValidationError as e:
             print(f"Error loading JSON file: {e}")
+        except FileNotFoundError:
+            print("No streams found")

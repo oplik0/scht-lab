@@ -5,23 +5,30 @@ from math import log, sqrt
 from pathlib import Path
 from typing import Optional, cast
 from functools import cache
+from ipaddress import ip_interface, IPv4Interface, IPv6Interface
 
 from anyio import open_file
 from async_lru import alru_cache
 from geopy.adapters import AioHTTPAdapter
-from geopy.geocoders import Nominatim
+from geopy.geocoders import Nominatim, Photon, IGNFrance, DataBC
 from geopy.location import Location as GeoLocation
+from geopy.exc import GeopyError
 from typer import get_app_dir
+
+from scht_lab.models.flow import Flow, Selector, Treatment
 
 
 class Location:
     """Location (switch/city) in the topology."""
-    def __init__(self, name: str, ip: str, index: int, population: int, lat, lon, link_count: int = 1) -> None:
+    def __init__(self, name: str, ip: str | IPv4Interface | IPv6Interface, index: int, population: int, lat, lon, link_count: int = 1) -> None:
         """Initialize a location object."""
         self.name = name
         self.index = index
-        self.ip = ip
-        self.ofname = f"of:{str(index+1).zfill(16)}"
+        if isinstance(ip, str):
+            self.ip = ip_interface(ip)
+        else:
+            self.ip = ip
+        self.ofname = f"of:{hex(index+1)[2:].zfill(16)}"
         self.population = population
         self.lat = lat
         self.lon = lon
@@ -30,7 +37,80 @@ class Location:
     def coords(self) -> tuple[float, float]:
         """Get coordinates of a location."""
         return (self.lat, self.lon)
-
+    def endpoint_flows(self) -> list[Flow]:
+        return [
+            Flow(
+                deviceId=self.ofname,
+                isPermanent=True,
+                priority=65534,
+                timeout=0,
+                selector=Selector(
+                    criteria=[
+                        {
+                            "type": "ETH_TYPE",
+                            "ethType": "0x800" if self.ip.version == 4 else "0x86dd",
+                        },
+                        {
+                            "type": "IPV4_DST" if self.ip.version == 4 else "IPV6_DST",
+                            "ip": f"{self.ip.ip}/{self.ip.max_prefixlen}",
+                        } # type: ignore
+                    ]
+                ),
+                treatment=Treatment(
+                    instructions=[
+                        {
+                            "type": "OUTPUT",
+                            "port": "1",
+                        }
+                    ]
+                ),
+            ),
+            # ARP/LLDP flows, used instead of mininet --arp argument for performance reasons
+            Flow(
+                deviceId=self.ofname,
+                isPermanent=True,
+                priority=65534,
+                timeout=0,
+                selector=Selector(
+                    criteria=[
+                        {
+                            "type": "ETH_TYPE",
+                            "ethType": "0x0806"
+                        },
+                    ]
+                ),
+                treatment=Treatment(
+                    instructions=[
+                        {
+                            "type": "OUTPUT",
+                            "port": "CONTROLLER",
+                        }
+                    ]
+                )
+            ),
+            Flow(
+                deviceId=self.ofname,
+                isPermanent=True,
+                priority=65534,
+                timeout=0,
+                selector=Selector(
+                    criteria=[
+                        {
+                            "type": "ETH_TYPE",
+                            "ethType": "0x88CC"
+                        },
+                    ]
+                ),
+                treatment=Treatment(
+                    instructions=[
+                        {
+                            "type": "OUTPUT",
+                            "port": "CONTROLLER",
+                        }
+                    ]
+                )
+            )
+        ]
 
 class Link:
     """Link between two locations (switches)."""
@@ -98,7 +178,13 @@ class Topology:
         self.links.append(link)
     def get_location(self, name: str) -> Location | None:
         """Get a location from the topology by name."""
-        return next((location for location in self.locations if location.name == name), None)
+        ip = IPv4Interface("0.0.0.0/0")
+        try:
+            ip = ip_interface(name)
+        except ValueError:
+            pass
+        return next((location for location in self.locations if location.name == name or ip.ip == location.ip.ip), None)
+        
     def get_link(self, l1: Location, l2: Location) -> Link | None:
         """Get a link between two locations (undirected)."""
         return next((link for link in self.links if l1 in link.locations and l2 in link.locations), None)
@@ -109,15 +195,39 @@ class Topology:
         """Get the port number to a location."""
         return next(link.port_to(dst) for link in self.links if src in link.locations and dst in link.locations)
 
+    @property
+    @cache
+    def max_delay(self) -> float:
+        """Get the maximum delay in the topology."""
+        return max(link.delay_calc() for link in self.links)
+    @property
+    @cache
+    def max_jitter(self) -> float:
+        """Get the maximum jitter in the topology."""
+        return max(link.jitter_calc() for link in self.links)
+    @property
+    @cache
+    def max_bandwidth(self) -> float:
+        """Get the maximum bandwidth in the topology."""
+        return max(link.bandwidth_calc() for link in self.links)
+    @property
+    @cache
+    def max_loss(self) -> float:
+        """Get the maximum loss in the topology."""
+        return max(link.loss_calc() for link in self.links)
+
 @alru_cache(maxsize=64)
 async def get_geo(name: str) -> GeoLocation | None:
     """Get geolocation by name of a place (e.g. city)."""
-    async with Nominatim(user_agent="scht_lab_pw", adapter_factory=AioHTTPAdapter) as geolocator:
-        coro = geolocator.geocode(name, exactly_one=True)
-        if coro is None:
-            return None
-        return cast(GeoLocation, await coro)
-
+    for provider in [Nominatim, Photon, IGNFrance, DataBC]:
+        async with provider(user_agent="scht_lab_pw", adapter_factory=AioHTTPAdapter) as geolocator:
+            coro = geolocator.geocode(name, exactly_one=True)
+            if coro is None:
+                return None
+            try:
+                return cast(GeoLocation, await coro)
+            except GeopyError:
+                continue
 async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | OrderedDict[str, int]]]) -> Topology:
     """Load topology from a OrderedDict."""
     topo = Topology()

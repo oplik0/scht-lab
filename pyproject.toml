@@ -9,12 +9,17 @@ packages = [{include = "scht_lab"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 aiohttp = "^3.8.6"
-typer = {extras = ["all"], git = "https://github.com/oplik0/typer.git", branch = "async_command"}
+typer = {extras = ["all"], git = "https://github.com/skeletorXVI/typer.git", branch = "feature/anyio-support"}
 rustworkx = "^0.13.2"
 geopy = "^2.4.0"
 async-lru = "^2.0.4"
 anyio = "^4.0.0"
 pydantic = "^2.4.2"
+
+[tool.poetry.group.dev.dependencies]
+snakeviz = "^2.2.0"
+py-spy = "^0.3.14"
+pyinstrument = "^4.6.1"
 
 [build-system]
 requires = ["poetry-core"]

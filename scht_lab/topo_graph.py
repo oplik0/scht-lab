@@ -1,14 +1,14 @@
 """Graph utilities for Topology objects."""
 from collections.abc import Callable
 from functools import wraps
-from itertools import pairwise
+from itertools import chain, pairwise, permutations
 from typing import NewType, cast
 
 import rustworkx as rx
 from geopy.distance import distance
 
 from scht_lab.cost_calc import get_cost_calc
-from scht_lab.models.flow import Flow
+from scht_lab.models.flow import Flow, Selector, Treatment
 from scht_lab.models.stream import Priorities, Requirements
 from scht_lab.topo import Link, Location, Topology
 
@@ -50,6 +50,17 @@ def cost_estimate_fn(dst: Location) -> Callable[[Location], float]:
     return wrapper
 
 
+def goal(node: Location, dst: Location) -> bool:
+    """Check if a node is the goal for A*."""
+    return node == dst
+
+def goal_fn(dst: Location) -> Callable[[Location], bool]:
+    """Create a goal function for A*."""
+    @wraps(goal)
+    def wrapper(node: Location) -> bool:
+        return goal(node, dst)
+    return wrapper
+
 def get_path(
         graph: rx.PyGraph, graph_map: dict[Location, int],
         topo: Topology,
@@ -58,9 +69,9 @@ def get_path(
     """Find a shortest path between two nodes in a graph."""
     inverse_graph_map = {v: k for k, v in graph_map.items()}
     path: rx.NodeIndices = rx.astar_shortest_path( # type: ignore
-        graph, 
+        graph,
         graph_map[src], 
-        lambda node: node.ip == dst.ip, 
+        goal_fn(dst), 
         get_cost_calc(priorities, requirements), 
         cost_estimate_fn(dst),
         )
@@ -79,29 +90,29 @@ def paths_to_flows(paths: NodePaths | list[Location], topo: Topology) -> list[Fl
                     isPermanent=True,
                     priority=40000,
                     timeout=0,
-                    selector={
-                        "criteria": [
+                    selector=Selector(
+                        criteria=[
                             {
                                 "type": "ETH_TYPE",
-                                "ethType": "0x800",
+                                "ethType": "0x800" if dst.ip.version == 4 else "0x86dd",
                             },
                             {
-                                "type": "IPV4_DST",
-                                "ip": dst.ip,
+                                "type": "IPV4_DST" if dst.ip.version == 4 else "IPV6_DST",
+                                "ip": f"{dst.ip.ip}/{dst.ip.max_prefixlen}",
                             }, 
                             {
-                                "type": "IPV4_SRC",
-                                "ip": src.ip,
-                            },
+                                "type": "IPV4_SRC" if src.ip.version == 4 else "IPV6_SRC",
+                                "ip": f"{src.ip.ip}/{src.ip.max_prefixlen}",
+                            }, # type: ignore
                         ],
-                    },
-                    treatment={
-                        "instructions": [
+                    ),
+                    treatment=Treatment(
+                        instructions=[
                             {
                                 "type": "OUTPUT",
                                 "port": str(topo.port_to(current, nexthop)),
                             },
                         ],
-                    },
+                    ),
                 ))
     return flows
