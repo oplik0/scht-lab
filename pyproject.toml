@@ -12,9 +12,13 @@ aiohttp = "^3.8.6"
 typer = {extras = ["all"], git = "https://github.com/skeletorXVI/typer.git", branch = "feature/anyio-support"}
 rustworkx = "^0.13.2"
 geopy = "^2.4.0"
-async-lru = "^2.0.4"
 anyio = "^4.0.0"
 pydantic = "^2.4.2"
+pydot = "^1.4.2"
+pillow = "^10.1.0"
+diskcache = "^5.6.3"
+aiocache = {extras = ["msgpack"], version = "^0.12.2"}
+aiofilecache = "^0.0.1"
 
 [tool.poetry.group.dev.dependencies]
 snakeviz = "^2.2.0"

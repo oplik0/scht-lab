@@ -1,12 +1,14 @@
 """Typer-based CLI application."""
 from typing import Annotated
-
+from pathlib import Path
 from click import Context
-from typer import Option, Typer
+from typer import Option, Typer, get_app_dir
+from shutil import rmtree
 
 from scht_lab.cli.flows import flows_app
 from scht_lab.cli.streams import streams_app
 from scht_lab.cli.paths import paths_app
+from scht_lab.cli.topo import topo_app
 
 app = Typer()
 
@@ -22,7 +24,14 @@ def all_commands(
     ctx.obj["USERNAME"] = user
     ctx.obj["PASSWORD"] = password
 
-
 app.add_typer(flows_app, name="flows", callback=all_commands)
 app.add_typer(streams_app, name="streams", callback=all_commands)
 app.add_typer(paths_app, name="paths", callback=all_commands)
+app.add_typer(topo_app, name="topo", callback=all_commands)
+
+
+@app.command()
+def clean(ctx: Context):
+    """Clean cache and save topology data."""
+    dir = get_app_dir("scht_lab")
+    rmtree(dir)

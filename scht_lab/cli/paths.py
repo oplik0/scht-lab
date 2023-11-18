@@ -1,4 +1,4 @@
-from itertools import pairwise
+from itertools import chain, pairwise
 import json
 from pathlib import Path
 from typing import Annotated, Literal, Optional, Tuple, cast
@@ -6,11 +6,13 @@ from operator import mul
 from functools import reduce
 from aiohttp import ClientError, ContentTypeError
 import re
+from math import inf
+from rich import print
 
 from pydantic import ValidationError
 from rich import print
 from typer import Option, Context, Typer, get_app_dir, Exit
-from scht_lab.client import get_client
+from scht_lab.client import activate_defaults, get_client, send_flows
 
 from scht_lab.models.flow import Flow
 from scht_lab.models.stream import Requirements, Streams, Priorities
@@ -29,6 +31,7 @@ async def find_paths_for_streams(
     apply: Annotated[bool, Option("-a", "--apply", help="Apply the paths to the network")] = False,
     output: Annotated[Optional[Path], Option("-o", "--output", help="File to output the resulting flows to as JSON")] = None,
     topology: Annotated[Optional[Path], Option("-t", "--topology", help="Topology file to use")] = None,
+    max_attempts: Annotated[int, Option("-m", "--max-attempts", help="Maximum number of attempts to find a path")] = 10,
     ):
     """Find paths based on stream specifications. By default it will use streams previously saved from the CLI."""
     target_file = Path(get_app_dir("scht_lab")) / "streams.jsonl"
@@ -58,42 +61,49 @@ async def find_paths_for_streams(
             continue
         priorities = stream.priorities or Priorities()
         requirements = stream.requirements or Requirements()
-        path = get_path(graph, graph_map, topo, source, dest, priorities, requirements)
-        link_path = cast(list[Link],list(map(lambda x: topo.get_link(*x), pairwise(path))))
-        if not path or None in link_path:
-            print(f"Correct path not found for stream {stream}")
-            continue
-        params = get_path_params(link_path, topo)
-        if stream.type == "UDP" and params["bandwidth"] < stream.rate:
-            params["loss"] += (stream.rate - params["bandwidth"])/stream.rate
-        if requirements.delay and params["delay"] > requirements.delay:
-            print(f"Path {path} does not meet delay requirement of {requirements.delay} for stream {stream}. Total delay: {params['delay']}")
-            continue
-        if requirements.jitter and params["jitter"] > requirements.jitter:
-            print(f"Path {path} does not meet jitter requirement of {requirements.jitter} for stream {stream}. Total jitter: {params['jitter']}")
-            continue
-        if requirements.loss and params["loss"] > requirements.loss:
-            print(f"Path {path} does not meet loss requirement of {requirements.loss} for stream {stream}. Total loss: {params['loss']}")
-            continue
-        flows.update(paths_to_flows(path, topo))
-        flows.update(paths_to_flows(list(reversed(path)), topo))
-        flows.update(*[node.endpoint_flows() for node in path])
-        for link in link_path:
-            link.increase_utilization(stream.rate)
+        for i in chain(range(1, max_attempts+1), [inf]):
+            path = get_path(graph, graph_map, topo, source, dest, priorities, requirements)
+            link_path = cast(list[Link],list(map(lambda x: topo.get_link(*x), pairwise(path))))
+            if not path or None in link_path:
+                print(f"Correct path not found for stream {stream}")
+                continue
+            params = get_path_params(link_path, topo)
+            failed = False
+            if stream.type == "UDP" and params["bandwidth"] < stream.rate:
+                params["loss"] += (stream.rate - params["bandwidth"])/stream.rate
+            if requirements.delay and params["delay"] > requirements.delay:
+                priorities.delay = priorities.delay * 2**i if priorities.delay else 1
+                failed = True
+                print(f"Path {path} does not meet delay requirement of {requirements.delay} for stream {stream}. Total delay: {params['delay']}")
+            if requirements.jitter and params["jitter"] > requirements.jitter:
+                priorities.jitter = priorities.jitter * 2**i if priorities.jitter else 1
+                failed = True
+                print(f"Path {path} does not meet jitter requirement of {requirements.jitter} for stream {stream}. Total jitter: {params['jitter']}")
+            if requirements.loss and params["loss"] > requirements.loss:
+                priorities.loss = priorities.loss * 2**i if priorities.loss else 1
+                failed = True
+                print(f"Path {path} does not meet loss requirement of {requirements.loss} for stream {stream}. Total loss: {params['loss']}")
+            if not failed:
+                flows.update(paths_to_flows(path, topo))
+                flows.update(paths_to_flows(list(reversed(path)), topo)) # also add the return path
+                flows.update(*[node.endpoint_flows() for node in path])
+                for link in link_path:
+                    link.increase_utilization(stream.rate)
+                break
     if apply:
-        async with get_client(ctx) as client:
-            response = await client.post("/onos/v1/flows?appId=scht_lab", json={"flows":[flow.model_dump(exclude_unset=True, mode="json") for flow in flows]})
-            try:
-                data = await response.json()
-                print(data)
-            except (ContentTypeError, ClientError):
-                print(response.status)
+        try:
+            await activate_defaults(ctx)
+            data = await send_flows(ctx, flows)
+            print(data)
+        except (ContentTypeError, ClientError) as e:
+            print(f"Error sending flows: {e}")
     if output:
         with output.open('w') as f:
             json.dump({"flows": [flow.model_dump(exclude_unset=True, mode="json") for flow in flows]}, f, indent=2)
     if not (apply or output):
         print(flows)
     if not file:
+        # clean up saved streams after use
         target_file.unlink()
 def get_path_params(path: list[Link], topo: Topology) -> dict[Literal["delay", "jitter", "loss", "bandwidth"], float]:
     """Get the bandwidth of a path."""

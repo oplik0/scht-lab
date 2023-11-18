@@ -9,12 +9,12 @@ from scht_lab.topo import Link, Topology
 def delay_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
     """Calculate delay for a link."""
     normalized_delay = link.delay_calc()/(topo.max_delay if topo else 1)
-    return priority*normalized_delay if priority else 0.0
+    return priority/normalized_delay if priority else 0.0
 
 def jitter_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
     """Calculate jitter (derivative of delay) for a link."""
     normalized_jitter = link.jitter_calc()/(topo.max_jitter if topo else 1)
-    return priority*normalized_jitter if priority else 0.0
+    return priority/normalized_jitter if priority else 0.0
 
 def bandwidth_calc(link: Link, priority: float = 1.0, requirement: float = 0.0, topo: Topology | None = None) -> float:
     """Calculate bandwidth for a link."""
@@ -27,7 +27,7 @@ def bandwidth_calc(link: Link, priority: float = 1.0, requirement: float = 0.0, 
 def loss_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
     """Calculate loss for a link."""
     normalized_loss = link.loss_calc()/(topo.max_loss if topo else 1)
-    return priority/link.loss_calc() if priority else 0.0
+    return priority/normalized_loss if priority else 0.0
 
 def congestion_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
     """Calculate congestion for a link."""

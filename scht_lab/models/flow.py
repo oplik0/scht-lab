@@ -3,7 +3,7 @@
 
 from typing_extensions import Literal, TypedDict, Union, final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 @final
@@ -387,7 +387,7 @@ class OduSigTypeCriteria(TypedDict):
 
 
 class Treatment(BaseModel):
-    instructions: list[Instruction]
+    instructions: list[Instruction] = Field(discriminator="type")
 
 
 Criteria = Union[
@@ -435,7 +435,7 @@ Criteria = Union[
 ]
 
 class Selector(BaseModel):
-    criteria: list[Criteria]
+    criteria: list[Criteria] = Field(discriminator="type")
 
 class Flow(BaseModel):
     deviceId: str

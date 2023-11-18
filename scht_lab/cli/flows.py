@@ -6,15 +6,15 @@ from aiohttp import ClientError, ContentTypeError
 from anyio import Path
 from rich import print
 from rich.tree import Tree
-from typer import Argument, Context, Typer
+from typer import Argument, Context, Typer, Option
 
-from scht_lab.client import get_client
+from scht_lab.client import get_client, send_flows
 from scht_lab.models.flow import Flow, Selector, Treatment
 
 flows_app = Typer(name="flows", help="Interact with flows")
 
 @flows_app.command("list")
-async def get_flows(ctx: Context):
+async def get_flows(ctx: Context, raw: Annotated[bool, Option("-r", "--raw", help="Print raw JSON response")] = False):
     """List all flows in the network."""
     async with get_client(ctx) as client:
         response = await client.get("/onos/v1/flows")
@@ -23,6 +23,11 @@ async def get_flows(ctx: Context):
             msg = f"Response didn't contain valid flows: {data}"
             raise ValueError(msg)
         flows: list[Flow] = data["flows"]
+
+        if raw:
+            print(json.dumps(flows, indent=4))
+            return
+
         flows_tree = Tree("flows")
         for flow in sorted(flows, key=lambda flow: flow.deviceId):
             single_flow_tree = flows_tree.add(flow.deviceId, style="cyan")
@@ -60,7 +65,7 @@ async def add_flow(ctx: Context, device_id: str, in_port: int, out_port: int, ip
         )
         response = await client.post("/onos/v1/flows?appId=scht_lab", json={"flows":[flow.model_dump(exclude_unset=True, mode="json")]})
         try:
-            data = await response.json()
+            data = await send_flows(ctx, [flow])
             print(data)
         except (ContentTypeError, ClientError):
             print(response.status)
