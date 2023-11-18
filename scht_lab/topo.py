@@ -116,11 +116,12 @@ class Link:
     def bandwidth_calc(self) -> float:
         """Calculate bandwidth for a link."""
         return (
-                (self.locations[0].population + 
-                self.locations[1].population + 
-                10*max(self.locations[0].population, self.locations[1].population)) / 9000000 - 
-                self.distance / 3 + 
-                (self.locations[0].link_count + self.locations[1].link_count) * 90
+                (
+                    self.locations[0].population + 
+                    self.locations[1].population + 
+                    10*max(self.locations[0].population, self.locations[1].population)
+                ) / 80000 - 
+                self.distance / 8
                 )
     @cache
     def loss_calc(self) -> float:

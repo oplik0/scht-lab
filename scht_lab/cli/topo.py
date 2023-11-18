@@ -35,9 +35,7 @@ async def show_topology(ctx: Context,
                         ):
     """Show a graph of the topology."""
     if topology:
-        start_time = time.time()
         topo = await load_topology_from_file(topology)
-        print(f"Loaded topology in {time.time() - start_time} seconds")
     else:
         topo = await default_topo()
     graph, _ = build_graph(topo)
