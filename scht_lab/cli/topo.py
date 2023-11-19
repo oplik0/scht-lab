@@ -30,7 +30,7 @@ async def load_topology(ctx: Context, file: Annotated[Path, Argument(exists=True
 @topo_app.command("show", help="Show topology")
 async def show_topology(ctx: Context,
                         topology: Annotated[Optional[Path], Option("-t", "--topology", help="JSON file to laod topology from - if not defined will use the default topology", exists=True, readable=True, resolve_path=True)] = None,
-                        output: Annotated[Optional[Path], Option(exists=True, readable=True, resolve_path=True)] = None,
+                        output: Annotated[Optional[Path], Option("-o", "--output", writable=True, resolve_path=True)] = None,
                         method: Annotated[GraphMethod, Option("-m", "--method", help="Graphviz layout engine to use for graphing", case_sensitive=False)] = GraphMethod.CIRCO
                         ):
     """Show a graph of the topology."""

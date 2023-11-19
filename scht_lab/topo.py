@@ -28,7 +28,7 @@ from rich import print
 
 class Location:
     """Location (switch/city) in the topology."""
-    def __init__(self, name: str, ip: str | IPv4Interface | IPv6Interface, index: int, population: int, lat: Optional[int] = None, lon: Optional[int] = None, link_count: int = 1) -> None:
+    def __init__(self, name: str, ip: str | IPv4Interface | IPv6Interface, index: int, population: int, lat: Optional[int] = None, lon: Optional[int] = None, connectivity: int = 1) -> None:
         """Initialize a location object."""
         self.name = name
         self.index = index
@@ -40,7 +40,8 @@ class Location:
         self.population = population
         self.lat = lat
         self.lon = lon
-        self.link_count = link_count
+        # this is the number of links from the lab1 topology, here to give consistent results between tree and full topologies on same paths:
+        self.connectivity = connectivity 
     
     def set_geo(self, geo: GeoLocation) -> None:
         """Set coordinates of a location."""
@@ -89,7 +90,7 @@ class Location:
         yield "population", self.population
         yield "lat", self.lat, None
         yield "lon", self.lon, None
-        yield "link_count", self.link_count
+        yield "link_count", self.connectivity
 
 class Link:
     """Link between two locations (switches)."""
@@ -121,8 +122,9 @@ class Link:
                     self.locations[1].population + 
                     10*max(self.locations[0].population, self.locations[1].population)
                 ) / 80000 - 
-                self.distance / 8
-                )
+                self.distance / 8 +
+                (self.locations[0].connectivity + self.locations[1].connectivity) * 90
+        )
     @cache
     def loss_calc(self) -> float:
         """Calculate loss for a link."""
@@ -230,7 +232,8 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
             name=city,
             ip=f"10.0.0.{index+1}/8",
             index=index,
-            population=cast(int, topo_data[city]["population"])
+            population=cast(int, topo_data[city]["population"]),
+            connectivity=cast(int, topo_data[city]["connectivity"]),
         )
         city_geo_lookups[city_data] = get_geo(city)
         topo.add_location(city_data)
@@ -238,19 +241,21 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
     
     for city in topo_data.keys():
         city_data = topo.get_location(city)
+        city_port = 2
         for neighbor in cast(OrderedDict, topo_data[city]["neighbors"]).keys():
             neighbor_location = topo.get_location(neighbor)
+            neighbor_port = 2
             if city_data is None or neighbor_location is None or topo.has_link(city_data, neighbor_location):
                 continue
-            city_data.link_count += 1
-            neighbor_location.link_count += 1
             topo.add_link(
                 Link(
                     (city_data, neighbor_location),
                     cast(int, cast(OrderedDict, topo_data[city]["neighbors"])[neighbor]),
-                    ports=(city_data.link_count, neighbor_location.link_count),
+                    ports=(city_port, neighbor_port),
                 ),
             )
+            city_port += 1
+            neighbor_port += 1
     geo_data = await gather_dict(city_geo_lookups)
     for city, geo in geo_data.items():
         if city is not None and geo is not None:

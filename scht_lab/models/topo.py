@@ -3,6 +3,7 @@ from pydantic import BaseModel, RootModel
 
 class Location(BaseModel):
     population: int
+    connectivity: int
     neighbors: dict[str, int]
 
 class Topology(RootModel):
