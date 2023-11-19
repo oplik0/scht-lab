@@ -21,8 +21,8 @@ def bandwidth_calc(link: Link, priority: float = 1.0, requirement: float = 0.0, 
     bw = link.bandwidth_calc() 
     if bw - link.utilization < requirement :
         return inf # this link is not usable according to requirements
-    normalized_bw = bw/(topo.max_bandwidth if topo else 1)
-    return priority*normalized_bw if priority else 0.0
+    normalized_bw = (topo.max_bandwidth if topo else 1)/bw
+    return normalized_bw**priority if priority else 0.0
 
 def loss_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
     """Calculate loss for a link."""

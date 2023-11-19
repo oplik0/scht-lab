@@ -148,6 +148,8 @@ def draw_graph(graph: rx.PyGraph, filename: str | Path | None, show: bool = Fals
             "style": "filled",
             "fillcolor": "lightgrey",
             "len": str(edge.distance),
+            "headlabel": f"{edge.ports[1] if edge.ports else 'host'}",
+            "taillabel": f"{edge.ports[0] if edge.ports else 'host'}",
         }
 
 

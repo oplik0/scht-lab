@@ -1,4 +1,5 @@
 """Commands directly related to ONOS flows."""
+from asyncio import gather
 import json
 from typing import Annotated, Literal
 
@@ -87,3 +88,22 @@ async def load_flows_from_file(
                 print(data)
         except json.JSONDecodeError as e:
             print(f"Error loading JSON file: {e}")
+
+def ip_flow(flow: Flow) -> bool:
+    return any([rule["type"] == "ETH_TYPE" and rule["ethType"] == "0x800" for rule in flow["selector"]["criteria"]])
+
+@flows_app.command()
+async def clear(ctx: Context):
+    """Clear all flows from ONOS."""
+    async with get_client(ctx) as client:
+        async with client.get("/onos/v1/flows") as response:
+            data = await response.json()
+            if not data.get("flows", False):
+                msg = f"Response didn't contain valid flows: {data}"
+                raise ValueError(msg)
+            flows = list(filter(ip_flow, data["flows"]))
+            requests = []
+            for flow in flows:
+                requests.append(client.delete(f"/onos/v1/flows/{flow['deviceId']}/{flow['id']}"))
+            await gather(*requests)
+            print(f"Deleted {len(requests)} flows")

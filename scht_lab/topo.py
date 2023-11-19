@@ -11,7 +11,6 @@ from ipaddress import ip_interface, IPv4Interface, IPv6Interface
 
 from anyio import open_file
 from aiocache import cached
-from aiocache.serializers import MsgPackSerializer
 from aiofilecache import FileCache
 
 from geopy.adapters import AioHTTPAdapter
@@ -41,7 +40,7 @@ class Location:
         self.lat = lat
         self.lon = lon
         # this is the number of links from the lab1 topology, here to give consistent results between tree and full topologies on same paths:
-        self.connectivity = connectivity 
+        self.connectivity = connectivity
     
     def set_geo(self, geo: GeoLocation) -> None:
         """Set coordinates of a location."""
@@ -99,12 +98,14 @@ class Link:
             locations: tuple[Location, Location], 
             distance: int, ports: Optional[tuple[int, int]] = None, 
             utilization: float = 0,
+            bw_override: Optional[int] = None,
             ) -> None:
         """Initialize a link object."""
         self.locations = locations
         self.distance = distance
         self.ports = ports
         self.utilization = utilization
+        self.bw_override = bw_override
     @cache
     def delay_calc(self) -> float:
         """Calculate delay for a link."""
@@ -116,14 +117,25 @@ class Link:
     @cache
     def bandwidth_calc(self) -> float:
         """Calculate bandwidth for a link."""
-        return (
+        if self.bw_override:
+            return self.bw_override
+        return max(
                 (
-                    self.locations[0].population + 
-                    self.locations[1].population + 
-                    10*max(self.locations[0].population, self.locations[1].population)
-                ) / 80000 - 
-                self.distance / 8 +
-                (self.locations[0].connectivity + self.locations[1].connectivity) * 90
+                    (
+                        self.locations[0].population + 
+                        self.locations[1].population + 
+                        10*max(self.locations[0].population, self.locations[1].population)
+                    ) / 9000000 - 
+                    self.distance / 3 +
+                    (self.locations[0].connectivity + self.locations[1].connectivity) * 90
+                ),
+                (
+                    min(self.locations[0].population, self.locations[1].population) / 
+                    (self.locations[0].population + self.locations[1].population) 
+                    * 100 +
+                    self.distance / 12 -
+                    (75/min(self.locations[0].connectivity, self.locations[1].connectivity))
+                )
         )
     @cache
     def loss_calc(self) -> float:
@@ -233,7 +245,6 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
             ip=f"10.0.0.{index+1}/8",
             index=index,
             population=cast(int, topo_data[city]["population"]),
-            connectivity=cast(int, topo_data[city]["connectivity"]),
         )
         city_geo_lookups[city_data] = get_geo(city)
         topo.add_location(city_data)
@@ -241,23 +252,27 @@ async def load_topology(topo_data: OrderedDict[str, OrderedDict[str, int | Order
     
     for city in topo_data.keys():
         city_data = topo.get_location(city)
-        city_port = 2
         for neighbor in cast(OrderedDict, topo_data[city]["neighbors"]).keys():
             neighbor_location = topo.get_location(neighbor)
-            neighbor_port = 2
             if city_data is None or neighbor_location is None or topo.has_link(city_data, neighbor_location):
                 continue
+            city_data.connectivity += 1
+            neighbor_location.connectivity += 1
+            bw_override=None
+            if topo_data[city].get("bw_overrides", False):
+                if topo_data[city]["bw_overrides"].get(neighbor, False): # type: ignore
+                    bw_override = topo_data[city]["bw_overrides"][neighbor] # type: ignore
             topo.add_link(
                 Link(
                     (city_data, neighbor_location),
                     cast(int, cast(OrderedDict, topo_data[city]["neighbors"])[neighbor]),
-                    ports=(city_port, neighbor_port),
+                    ports=(city_data.connectivity, neighbor_location.connectivity),
+                    bw_override=bw_override,
                 ),
             )
-            city_port += 1
-            neighbor_port += 1
     geo_data = await gather_dict(city_geo_lookups)
     for city, geo in geo_data.items():
+        city.connectivity = topo_data[city.name]["connectivity"]
         if city is not None and geo is not None:
             city.set_geo(geo)
     return topo

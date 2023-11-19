@@ -1,0 +1,45 @@
+{
+    "streams": [
+        {
+            "src": "Barcelona",
+            "dst": "Hamburg",
+            "size": 100,
+            "rate": 100,
+            "type": "TCP",
+            "priorities": {
+                "bandwidth": 100
+            },
+            "requirements": {
+                "loss": 0.1
+            }
+        },
+        {
+            "src": "Warsaw",
+            "dst": "Hamburg",
+            "size": 100,
+            "rate": 100,
+            "type": "TCP",
+            "priorities": {
+                "bandwidth": 100
+            },
+            "requirements": {
+                "loss": 0.1
+            }
+        },
+        {
+            "src": "Berlin",
+            "dst": "Hamburg",
+            "size": 100,
+            "rate": 100,
+            "type": "TCP",
+            "priorities": {
+                "bandwidth": 100
+            },
+            "requirements": {
+                "loss": 0.1
+            }
+        }
+    ]
+}
+
+

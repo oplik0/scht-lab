@@ -27,7 +27,7 @@ streams_regex = re.compile(r"^\s*{\s*\"streams\":\s*\[", re.UNICODE)
 @paths_app.command("find")
 async def find_paths_for_streams(
     ctx: Context,
-    file: Annotated[Path, Option("-f", "--file", exists=True, readable=True, resolve_path=True, help="JSON file with stream specifications")],
+    file: Annotated[Optional[Path], Option("-f", "--file", exists=True, readable=True, resolve_path=True, help="JSON file with stream specifications")] = None,
     apply: Annotated[bool, Option("-a", "--apply", help="Apply the paths to the network")] = False,
     output: Annotated[Optional[Path], Option("-o", "--output", help="File to output the resulting flows to as JSON")] = None,
     topology: Annotated[Optional[Path], Option("-t", "--topology", help="Topology file to use")] = None,

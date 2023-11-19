@@ -1,0 +1,1 @@
+curl.exe -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d @z1.json 'http://onos:rocks@mininet:8181/onos/v1/flows?appId=scht_lab'

@@ -16,6 +16,9 @@
         "neighbors": {
             "Paris": 1173,
             "Dunkirk": 1500
+        },
+        "bw_overrides": {
+            "Dunkirk": 75
         }
     },
     "Paris": {
@@ -54,6 +57,10 @@
             "Paris": 342,
             "Hamburg": 823,
             "Barcelona": 1500
+        },
+        "bw_overrides": {
+            "Hamburg": 200,
+            "Barcelona": 75
         }
     },
     "Geneva": {
@@ -73,6 +80,10 @@
             "Frankfurt": 550,
             "Dunkirk": 823,
             "Warsaw": 1053
+        },
+        "bw_overrides": {
+            "Warsaw": 300,
+            "Dunkirk": 200
         }
     },
     "Warsaw": {
@@ -82,6 +93,9 @@
             "Berlin": 729,
             "Hamburg": 1053,
             "Prague": 724
+        },
+        "bw_overrides": {
+            "Hamburg": 300
         }
     },
     "Prague": {

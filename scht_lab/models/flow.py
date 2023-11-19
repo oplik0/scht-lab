@@ -388,6 +388,8 @@ class OduSigTypeCriteria(TypedDict):
 
 class Treatment(BaseModel):
     instructions: list[Instruction] = Field(discriminator="type")
+    def __getitem__(self, key):
+        return getattr(self, key)
 
 
 Criteria = Union[
@@ -436,6 +438,8 @@ Criteria = Union[
 
 class Selector(BaseModel):
     criteria: list[Criteria] = Field(discriminator="type")
+    def __getitem__(self, key):
+        return getattr(self, key)
 
 class Flow(BaseModel):
     deviceId: str
@@ -453,4 +457,5 @@ class Flow(BaseModel):
             *[tuple(x) for x in [((k,v) for k,v in d.items()) for d in self.treatment.instructions]],
             *[tuple(x) for x in [[(k,v) for k,v in d.items()] for d in self.selector.criteria]],
         ))
-
+    def __getitem__(self, key):
+        return getattr(self, key)
