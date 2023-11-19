@@ -1,0 +1,4 @@
+Client,Client IP,Server,Server IP,Interval,Rate (server),Rate (client),Transfered,Jitter,Sent,Received,Loss,Out of order
+hBarcelona,10.0.0.2,hHamburg,10.0.0.8,0.0-29.8s,47.68 Mbps,47.68 Mbps,1422.02 Mb,0.64ms,126794,126750,0.04%,75880
+hWarsaw,10.0.0.9,hHamburg,10.0.0.8,0.0-7.8s,181.28 Mbps,181.2 Mbps,1422.02 Mb,0.47ms,126794,126742,0.04%,95571
+hBerlin,10.0.0.1,hHamburg,10.0.0.8,0.0-5.1s,276.69 Mbps,276.56 Mbps,1422.02 Mb,0.17ms,126794,126678,0.09%,84237

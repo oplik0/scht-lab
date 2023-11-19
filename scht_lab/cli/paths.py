@@ -32,6 +32,7 @@ async def find_paths_for_streams(
     output: Annotated[Optional[Path], Option("-o", "--output", help="File to output the resulting flows to as JSON")] = None,
     topology: Annotated[Optional[Path], Option("-t", "--topology", help="Topology file to use")] = None,
     max_attempts: Annotated[int, Option("-m", "--max-attempts", help="Maximum number of attempts to find a path")] = 10,
+    faild_fast: Annotated[bool, Option("-ff", "--fail-fast", help="Stop after the first failed attempt, and don't upload anything on failure")] = False,
     ):
     """Find paths based on stream specifications. By default it will use streams previously saved from the CLI."""
     target_file = Path(get_app_dir("scht_lab")) / "streams.jsonl"
@@ -62,7 +63,7 @@ async def find_paths_for_streams(
         priorities = stream.priorities or Priorities()
         requirements = stream.requirements or Requirements()
         for i in chain(range(1, max_attempts+1), [inf]):
-            path = get_path(graph, graph_map, topo, source, dest, priorities, requirements)
+            path = get_path(graph, graph_map, topo, source, dest, priorities, requirements, stream.type.value)
             link_path = cast(list[Link],list(map(lambda x: topo.get_link(*x), pairwise(path))))
             if not path or None in link_path:
                 print(f"Correct path not found for stream {stream}")
@@ -90,6 +91,10 @@ async def find_paths_for_streams(
                 for link in link_path:
                     link.increase_utilization(stream.rate)
                 break
+        else:
+            print(f"Path not found for stream {stream}")
+            if faild_fast:
+                return
     if apply:
         try:
             await activate_defaults(ctx)

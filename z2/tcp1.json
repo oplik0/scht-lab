@@ -1,4 +1,5 @@
 {
+    "$schema": "./streams-schema.json",
     "streams": [
         {
             "src": "Barcelona",
@@ -7,10 +8,17 @@
             "rate": 100,
             "type": "TCP",
             "priorities": {
-                "bandwidth": 100
+                "bandwidth": 100,
+                "congestion": 1,
+                "delay": 1,
+                "jitter": 1,
+                "loss": 1
             },
             "requirements": {
-                "loss": 0.1
+                "loss": 0.1,
+                "delay": 100,
+                "jitter": 100,
+                "bandwidth": 50
             }
         },
         {

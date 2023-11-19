@@ -16,7 +16,7 @@ anyio = "^4.0.0"
 pydantic = "^2.4.2"
 pydot = "^1.4.2"
 pillow = "^10.1.0"
-aiocache = {extras = ["msgpack"], version = "^0.12.2"}
+aiocache = "^0.12.2"
 aiofilecache = "^0.0.1"
 
 [build-system]

@@ -4,14 +4,14 @@ from enum import Enum
 from functools import wraps
 from itertools import chain, pairwise, permutations
 from pathlib import Path
-from typing import NewType, cast
+from typing import NewType, cast, Literal
 
 import rustworkx as rx
 from geopy.distance import distance
 
 from scht_lab.cost_calc import get_cost_calc
 from scht_lab.models.flow import Flow, Selector, Treatment
-from scht_lab.models.stream import Priorities, Requirements
+from scht_lab.models.stream import Priorities, Requirements, StreamType
 from scht_lab.topo import Link, Location, Topology
 from rustworkx.visualization import graphviz_draw
 
@@ -32,7 +32,7 @@ def all_paths(
         priorities: Priorities, topo: Topology) -> NodePaths:
     """Find all shortest paths between all nodes in a graph."""
     inverse_graph_map = {v: k for k, v in graph_map.items()}
-    paths: dict[int, dict[int, list[int]]] = rx.all_pairs_dijkstra_shortest_paths(graph, get_cost_calc(priorities)) # type: ignore
+    paths: dict[int, dict[int, list[int]]] = rx.all_pairs_dijkstra_shortest_paths(graph, get_cost_calc(priorities, None, None, topo)) # type: ignore
     node_paths: NodePaths = {} # type: ignore
     for node, targets in paths.items():
         node_paths.setdefault(inverse_graph_map[node], {})
@@ -67,14 +67,17 @@ def get_path(
         graph: rx.PyGraph, graph_map: dict[Location, int],
         topo: Topology,
         src: Location, dst: Location,
-        priorities: Priorities | None, requirements: Requirements | None) -> list[Location]:
+        priorities: Priorities | None,
+        requirements: Requirements | None,
+        stream_type: StreamType | None = None,
+        ) -> list[Location]:
     """Find a shortest path between two nodes in a graph."""
     inverse_graph_map = {v: k for k, v in graph_map.items()}
     path: rx.NodeIndices = rx.astar_shortest_path( # type: ignore
         graph,
         graph_map[src], 
         goal_fn(dst), 
-        get_cost_calc(priorities, requirements), 
+        get_cost_calc(priorities, requirements, stream_type, topo), 
         cost_estimate_fn(dst),
         )
     return [inverse_graph_map[i] for i in path]
