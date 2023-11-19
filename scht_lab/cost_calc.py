@@ -7,9 +7,12 @@ from scht_lab.models.stream import Priorities, Requirements, StreamType
 from scht_lab.topo import Link, Topology
 
 
-def delay_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
+def delay_calc(link: Link, priority: float = 1.0, topo: Topology | None = None, requirements: Requirements | None = None) -> float:
     """Calculate delay for a link."""
-    normalized_delay = link.delay_calc()/(topo.max_delay if topo else 1)
+    delay = link.delay_calc()
+    if requirements and requirements.delay and delay > requirements.delay:
+        return inf
+    normalized_delay = delay/(topo.max_delay if topo else 1)
     return priority/normalized_delay if priority else 0.0
 
 def jitter_calc(link: Link, priority: float = 1.0, topo: Topology | None = None) -> float:
@@ -32,6 +35,8 @@ def loss_calc(link: Link, priority: float = 1.0, topo: Topology | None = None, r
         bw = link.bandwidth_calc() - link.utilization
         if bw < rate:
             loss += (rate-bw)/rate
+    if loss > (requirement.loss if requirement and requirement.loss else 0):
+        return inf
     normalized_loss = loss/(topo.max_loss if topo else 1)
     return priority/normalized_loss if priority else 0.0
 
