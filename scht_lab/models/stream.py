@@ -31,7 +31,7 @@ class Stream(BaseModel):
     src: str
     dst: str
     type: StreamType
-    size: int
+    size: Optional[int] = None
     rate: Annotated[int, "expected rate in Mbps"]
     requirements: Optional[Requirements]
     priorities: Optional[Priorities]

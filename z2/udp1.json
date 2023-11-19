@@ -4,7 +4,7 @@
             "src": "Barcelona",
             "dst": "Hamburg",
             "rate": 50,
-            "type": "TCP",
+            "type": "UDP",
             "priorities": {
                 "bandwidth": 10,
                 "congestion": 1,
@@ -22,7 +22,7 @@
             "src": "Warsaw",
             "dst": "Hamburg",
             "rate": 250,
-            "type": "TCP",
+            "type": "UDP",
             "priorities": {
                 "bandwidth": 10,
                 "congestion": 1,
@@ -39,8 +39,8 @@
         {
             "src": "Berlin",
             "dst": "Hamburg",
-            "rate": 300,
-            "type": "TCP",
+            "rate": 290,
+            "type": "UDP",
             "priorities": {
                 "bandwidth": 10,
                 "congestion": 1,

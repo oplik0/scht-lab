@@ -1,0 +1,132 @@
+{
+    "streams": [
+        {
+            "src": "Warsaw",
+            "dst": "Hamburg",
+            "rate": 150,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 10,
+                "congestion": 5,
+                "loss": 2
+            },
+            "requirements": {
+                "loss": 0.03,
+                "delay": 100,
+                "jitter": 100,
+                "bandwidth": 125
+            }
+        },
+        {
+            "src": "Berlin",
+            "dst": "Hamburg",
+            "rate": 150,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 10,
+                "congestion": 5,
+                "loss": 10
+            },
+            "requirements": {
+                "loss": 0.03,
+                "delay": 100,
+                "jitter": 100,
+                "bandwidth": 125
+            }
+        },
+        {
+            "src": "Barcelona",
+            "dst": "Hamburg",
+            "rate": 50,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 10,
+                "congestion": 10,
+                "loss": 2
+            },
+            "requirements": {
+                "loss": 0.03,
+                "delay": 100,
+                "jitter": 100,
+                "bandwidth": 30
+            }
+        },
+        {
+            "src": "Frankfurt",
+            "dst": "Hamburg",
+            "rate": 20,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 10,
+                "congestion": 10,
+                "delay": 25,
+                "jitter": 25,
+                "loss": 2
+            },
+            "requirements": {
+                "loss": 0.1,
+                "delay": 20,
+                "jitter": 5,
+                "bandwidth": 10
+            }
+        },
+        {
+            "src": "Paris",
+            "dst": "Hamburg",
+            "rate": 60,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 5,
+                "congestion": 5,
+                "delay": 25,
+                "jitter": 25,
+                "loss": 2
+            },
+            "requirements": {
+                "loss": 0.1,
+                "delay": 20,
+                "jitter": 5,
+                "bandwidth": 30
+            }
+        },
+        {
+            "src": "Geneva",
+            "dst": "Hamburg",
+            "rate": 6,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 1,
+                "congestion": 5,
+                "delay": 50,
+                "jitter": 100,
+                "loss": 100
+            },
+            "requirements": {
+                "loss": 0.01,
+                "delay": 15,
+                "bandwidth": 5
+            }
+        },
+        {
+            "src": "Vienna",
+            "dst": "Hamburg",
+            "rate": 12,
+            "type": "UDP",
+            "priorities": {
+                "bandwidth": 1,
+                "congestion": 5,
+                "delay": 50,
+                "jitter": 100,
+                "loss": 100
+            },
+            "requirements": {
+                "loss": 0.01,
+                "delay": 15,
+                "bandwidth": 10
+            }
+        }
+    ],
+    "$schema": "./streams-schema.json"
+}
+
+

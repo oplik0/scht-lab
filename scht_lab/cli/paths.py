@@ -22,7 +22,7 @@ from scht_lab.topo_graph import build_graph, get_path, paths_to_flows
 
 paths_app = Typer(name="paths")
 
-streams_regex = re.compile(r"^\s*{\s*\"streams\":\s*\[", re.UNICODE)
+streams_regex = re.compile(r"^\s*{\s*(\"$schema\": \"[^\"]+\",\s*)?\s*\"streams\":\s*\[", re.UNICODE)
 
 @paths_app.command("find")
 async def find_paths_for_streams(
@@ -63,7 +63,7 @@ async def find_paths_for_streams(
         priorities = stream.priorities or Priorities()
         requirements = stream.requirements or Requirements()
         for i in chain(range(1, max_attempts+1), [inf]):
-            path = get_path(graph, graph_map, topo, source, dest, priorities, requirements, stream.type.value)
+            path = get_path(graph, graph_map, topo, source, dest, priorities, requirements, stream.type)
             link_path = cast(list[Link],list(map(lambda x: topo.get_link(*x), pairwise(path))))
             if not path or None in link_path:
                 print(f"Correct path not found for stream {stream}")
@@ -84,6 +84,10 @@ async def find_paths_for_streams(
                 priorities.loss = priorities.loss * 2**i if priorities.loss else 1
                 failed = True
                 print(f"Path {path} does not meet loss requirement of {requirements.loss} for stream {stream}. Total loss: {params['loss']}")
+            if requirements.bandwidth and params["bandwidth"] < requirements.bandwidth:
+                priorities.bandwidth = priorities.bandwidth * 2**i if priorities.bandwidth else 1
+                failed = True
+                print(f"Path {path} does not meet bandwidth requirement of {requirements.bandwidth} for stream {stream}. Total bandwidth: {params['bandwidth']}")
             if not failed:
                 flows.update(paths_to_flows(path, topo))
                 flows.update(paths_to_flows(list(reversed(path)), topo)) # also add the return path
